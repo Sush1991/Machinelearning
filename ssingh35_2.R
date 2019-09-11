@@ -63,6 +63,19 @@ plot(my_data$familysize)
 
 #scatterplot annualsize
 plot(my_data$familysize , my_data$annualincome)
+
+#converting numeric to character
+class(my_data$familysize)
+str<-as.character(my_data$familysize)
+class(str)
+
+class(my_data$annualincome)
+mn<-as.matrix(my_data$annualincome)
+class(mn)
+
+#to fetch info about data rowwise and column wise
+my_data[2,]
+my_data[,2]
  
 
 
