@@ -1,0 +1,190 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(dplyr)
+library(caret)
+library(ggplot2)
+
+
+Bank <- read.csv("UniversalBank.csv")
+##Bank <-UniversalBank
+head(Bank)
+str(Bank)
+Bank1 <- Bank[,c(-1, -5)] ##excluding 2 coloumn form data "ID" and "Zip Code"
+
+Bank1$PersonalLoan_factor=as.factor(Bank1$PersonalLoan) ##converting Personal loan to factor
+
+
+set.seed(25)
+
+Test_Index = read.csv("test2.csv")
+Test_Data = Test_Index
+Test_Data <- Test_Data[,c(-1, -5)] ##excluding 2 coloumn form data "ID" and "Zip Code"
+
+
+Test_Data$PersonalLoan_factor=as.factor(Test_Data$PersonalLoan) ##converting Personal loan to factor
+
+## data Partioning into training and validation data
+Train_Index = createDataPartition(Bank1$PersonalLoan,p=0.6,list=FALSE) 
+Train_Data = Bank1[Train_Index,]
+Validation_Data = Bank1[-Train_Index,]
+
+summary(Train_Data)
+NROW(Train_Data)
+NROW(Test_Data)
+NROW(Validation_Data)
+
+
+##Dummy Variable
+
+dummy_model <- dummyVars(~Education,data=Bank)
+dummy_model <- dummyVars(~CreditCard,data=Bank)
+dummy_model <- dummyVars(~PersonalLoan,data=Bank)
+head(predict(dummy_model,Bank))
+```
+
+```{r}
+## Normalization
+# Copy the original data
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+test.norm.df <- Test_Data
+norm.values <- preProcess(Train_Data[, 1:13], method=c("center", "scale"))
+
+train.norm.df[, 1:13] <- predict(norm.values, Train_Data[, 1:13]) 
+valid.norm.df[, 1:13] <- predict(norm.values, Validation_Data[, 1:13])
+test.norm.df[, 1:13] <- predict(norm.values, Test_Data[, 1:13])
+norm.values <- preProcess(Train_Data[, 1:13], method=c("center", "scale"))
+
+
+
+
+summary(train.norm.df)
+var(train.norm.df[, 1:13])
+
+
+summary(valid.norm.df)
+var(valid.norm.df[, 1:13])
+
+
+```
+```{r}
+## Data Plotting
+
+library(ggplot2)
+ggplot(Train_Data, aes(x=Age,y=Income, Color="PersonalLoan")) +
+  geom_point() 
+ggplot(Train_Data, aes(x=Income,y=Experience, Color="Mortagage")) +
+  geom_point()
+```
+
+```{r}
+##Modelling knn
+library(FNN)
+nn <- knn(train = train.norm.df[, 1:12], test = test.norm.df[, 1:12], 
+          cl = train.norm.df[, 13], k = 1, prob=TRUE)
+row.names(Train_Data)[attr(nn, "nn.index")]
+```
+
+## knn of test set is 1 that is loan would be accept
+
+
+```{r}
+## find the optimal value of k 
+
+set.seed(123)
+Serach_grid <- expand.grid(k=c(1:10))
+model<-train(PersonalLoan_factor~Age+Experience+Income+Family+CCAvg+Mortgage+CreditCard, data=train.norm.df, 
+             method="knn", tuneGrid=Serach_grid)
+model
+##The final value used for the model was k = 7.
+
+## Now we predict for the test set.
+knn.pred.new <- knn(valid.norm.df[, 1:13], test.norm.df[, 1:13], 
+                    cl = valid.norm.df[, 13], k = 7)
+row.names(Validation_Data)[attr(nn, "nn.index")]
+##loan is accepted
+
+## confusion matrix
+library("gmodels")
+
+CrossTable(x=valid.norm.df$Income,y=valid.norm.df$PersonalLoan_factor, prop.chisq = FALSE)
+```
+
+
+
+
+
+```{r}
+
+##Adding new customer using rbind in universalBank dataset
+newRow <- data.frame(ID = "5001" ,Age ="40", Experience = "10", Income = "84", ZIPCode= "91102", Family = "2", CCAvg = "2", Education = "1", Mortgage = "0",PersonalLoan = "1", SecuritiesAccount = "0" , CDAccount = "0" ,Online = "1", CreditCard = "1" ) 
+"UniversalBank"<- rbind(UniversalBank, newRow)
+
+
+## repartion the data  into training, validation, and test sets (50% : 30% : 20%)
+
+library(dplyr)
+library(caret)
+library(ggplot2)
+
+Bank <- read.csv("UniversalBank.csv")
+Bank2 <- Bank[,c(-1, -5)]
+
+Bank2$PersonalLoan_factor=as.factor(Bank2$PersonalLoan)
+library(caret)
+set.seed(25)
+
+Test_Index1 = createDataPartition(Bank2$PersonalLoan,p=0.2, list=FALSE) # 20% reserved for Test
+Test_Data1 = Bank2[Test_Index1,]
+
+Train_Index1 = createDataPartition(Bank2$PersonalLoan_factor,p=0.5,list=FALSE) 
+Train_Data1 = Bank2[Train_Index1,]
+Validation_Data1 = Bank2[-Train_Index1,]
+summary(Train_Data1)
+NROW(Train_Data1)
+NROW(Test_Data1)
+NROW(Validation_Data1)
+
+
+
+```
+```{r}
+## Normalize the data
+# Copy the original data
+train.norm.df1 <- Train_Data1
+valid.norm.df1 <- Validation_Data1
+test.norm.df1 <- Test_Data1
+norm.values1 <- preProcess(Train_Data1[, 1:13], method=c("center", "scale"))
+
+train.norm.df1[, 1:13] <- predict(norm.values, Train_Data1[, 1:13]) 
+valid.norm.df1[, 1:13] <- predict(norm.values, Validation_Data1[, 1:13])
+norm.values1 <- preProcess(Train_Data1[, 1:13], method=c("center", "scale"))
+
+test.norm.df1 <- predict(norm.values, Test_Data1[, 1:13])
+
+
+summary(train.norm.df1)
+```
+```{r}
+
+##Apply the k-NN method with the k = 7
+library(FNN)
+nn <- knn(train = train.norm.df1[, 1:12], test = test.norm.df1[, 1:12], 
+          cl = train.norm.df1[, 13], k = 7, prob=TRUE)
+row.names(Train_Data1)[attr(nn, "nn.index")]
+```
+
+```{r}
+
+library("gmodels")
+
+CrossTable(x=test.norm.df1$Income,y=test.norm.df1$PersonalLoan_factor, prop.chisq = FALSE)
+
+## confusion matrix of training and validation dataset is more accurate than test dataset
+```
+
