@@ -1,0 +1,259 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(dplyr)
+library(caret)
+library(ggplot2)
+
+
+Bank <- read.csv("UniversalBank.csv")
+##Bank <-UniversalBank
+head(Bank)
+str(Bank)
+Bank1 <- Bank[,c(-1, -5)] ##excluding 2 coloumn form data "ID" and "Zip Code"
+
+##converting Personal loan to factor
+Bank1$PersonalLoan=as.factor(Bank1$PersonalLoan)
+Bank1$Education = as.factor(Bank1$Education)
+levels(Bank1$Education)
+
+dummy_model<-dummyVars(~Education,data=Bank1)
+head(predict(dummy_model, Bank1))
+
+
+Bank1<-cbind(Bank1, predict(dummy_model, Bank1))
+Bank1$Education<- NULL
+Bank1
+View(Bank1)
+```
+
+
+Qs 1) 
+Consider the following customer: Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. Perform a k-NN classification with all predictors except ID and ZIP code using k = 1. Remember to transform categorical predictors with more than two categories into dummy variables first. Specify the success class as 1 (loan acceptance), and use the default cutoff value of 0.5. How would this customer be classified?
+```{r}
+set.seed(25)
+
+Test_Data<-read.csv("test.csv")
+
+
+Test_Data <- Test_Data[,c(-1, -5)] ##excluding 2 coloumn form data "ID" and "Zip Code"
+
+Test_Data$Education.1 = as.factor(Test_Data$Education.1)
+Test_Data$Education.2 = as.factor(Test_Data$Education.2)
+Test_Data$Education.3 = as.factor(Test_Data$Education.3)
+levels(Test_Data$Education)
+Test_Data
+ 
+```
+
+
+```{r}
+## data Partioning into training and validation data
+Train_Index = createDataPartition(Bank1$PersonalLoan,p=0.6,list=FALSE) 
+Train_Data = Bank1[Train_Index,]
+Validation_Data = Bank1[-Train_Index,]
+
+summary(Train_Data)
+NROW(Train_Data)
+NROW(Test_Data)
+NROW(Validation_Data)
+```
+
+
+```{r}
+## Normalization
+# Copy the original data
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+test.norm.df <- Test_Data
+norm.values <- preProcess(Train_Data[, 1:14], method=c("center", "scale"))
+
+train.norm.df[, 1:14] <- predict(norm.values, Train_Data[, 1:14]) 
+valid.norm.df[, 1:14] <- predict(norm.values, Validation_Data[, 1:14])
+test.norm.df[, 1:13] <- predict(norm.values, Test_Data[, 1:13])
+norm.values <- preProcess(Train_Data[, 1:14], method=c("center", "scale"))
+```
+
+
+```{r}
+summary(train.norm.df)
+```
+
+
+```{r}
+summary(valid.norm.df)
+```
+
+
+```{r}
+## Data Plotting
+
+library(ggplot2)
+ggplot(Train_Data, aes(x=Age,y=Income, Color="PersonalLoan")) +
+  geom_point() 
+ggplot(Train_Data, aes(x=Income,y=Experience, Color="Mortagage")) +
+  geom_point()
+```
+
+Qs 2)
+What is a choice of k that balances between overfitting and ignoring the predictor information?
+
+We will now run our model and test on the validation set
+```{r}
+##Modelling knn
+library(FNN)
+nn <- knn(train = train.norm.df[, 1:6], test = test.norm.df[, 1:6], 
+          cl = train.norm.df[, 7], k = 1, prob=TRUE)
+row.names(Train_Data)[attr(nn, "nn.index")]
+
+
+
+```
+
+## knn of test set is 1 that is loan would be accept
+
+```{r}
+library(caret)
+accuracy.df <- data.frame(k = seq(1, 14, 1), accuracy = rep(0, 14))
+
+# compute knn for different k on validation.
+for(i in 2:14) {
+  knn.pred <- knn(train.norm.df[,-7], valid.norm.df[,-7], 
+                  cl = train.norm.df[,7], k = i)
+  accuracy.df[i, 2] <- confusionMatrix(knn.pred, valid.norm.df[,7])$overall[1] 
+}
+accuracy.df
+```
+
+
+Qs 3) 
+Show the confusion matrix for the validation data that results from using the best k.
+```{r}
+ knn.pred <- knn(train.norm.df[,-7], valid.norm.df[,-7], 
+                  cl = train.norm.df[,7], k = 3)
+  accuracy.df <- confusionMatrix(knn.pred, valid.norm.df[,7])$overall[1]
+  accuracy.df
+```
+
+```{r}
+ CrossTable(x=valid.norm.df[,7],y=knn.pred)
+```
+
+Qs 4)
+Consider the following customer: Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1 and Credit Card = 1. Classify the customer using the best k.
+```{r}
+
+library(FNN)
+nn <- knn(train = train.norm.df[, 1:6], test = test.norm.df[, 1:6], 
+          cl = train.norm.df[, 7], k = 3, prob=TRUE)
+row.names(train.norm.df)[attr(nn, "nn.index")]
+```
+
+
+
+Qs 5)
+Repartition the data, this time into training, validation, and test sets (50% : 30% : 20%). Apply the k-NN method with the k chosen above. Compare the confusion matrix of the test set with that of the training and validation sets. Comment on the differences and their reason.
+```{r}
+## repartion the data  into training, validation, and test sets (50% : 30% : 20%)
+Bank2 <- read.csv("UniversalBank.csv")
+Bank2 <- Bank[,c(-1, -5)] ##excluding 2 coloumn form data "ID" and "Zip Code"
+```
+
+
+```{r}
+##converting Personal loan to factor
+Bank2$PersonalLoan=as.factor(Bank2$PersonalLoan)
+Bank2$Education = as.factor(Bank2$Education)
+levels(Bank2$Education)
+
+dummy_model<-dummyVars(~Education,data=Bank2)
+head(predict(dummy_model, Bank2))
+
+
+Bank2<-cbind(Bank2, predict(dummy_model, Bank2))
+Bank2$Education<- NULL
+Bank2
+```
+
+
+```{r}
+
+##Repartition the data, tnto training, validation, and test sets (50% : 30% : 20%).
+set.seed(20)
+Train_Index = createDataPartition(Bank2$PersonalLoan,p=0.5, list=FALSE) 
+Train_Data = Bank2[Train_Index,]
+ValTest_data = Bank2[-Train_Index,]
+
+Validation_Index <- createDataPartition(ValTest_data$PersonalLoan,p=0.6, list=FALSE) 
+Validation_Data <- ValTest_data[Validation_Index,]
+Test_Data <- ValTest_data[-Validation_Index,]
+summary(Train_Data)
+
+```
+
+
+```{r}
+summary(Validation_Data)
+```
+
+```{r}
+## Normalization
+# Copy the original data
+train.norm.df1 <- Train_Data
+valid.norm.df1 <- ValTest_data
+test.norm.df1 <- Test_Data
+norm.values <- preProcess(Train_Data[, 1:14], method=c("center", "scale"))
+
+train.norm.df1[, 1:14] <- predict(norm.values, Train_Data[, 1:14]) 
+valid.norm.df1[, 1:14] <- predict(norm.values, ValTest_data[, 1:14])
+test.norm.df1[, 1:14] <- predict(norm.values, Test_Data[, 1:14])
+norm.values <- preProcess(Train_Data[, 1:14], method=c("center", "scale"))
+```
+
+
+```{r}
+summary(train.norm.df1)
+```
+
+
+```{r}
+summary(valid.norm.df1)
+```
+
+
+```{r}
+##Let’s now run knn on the training set, and compare the confusion matrices on the validation and test sets
+##Apply the k-NN method with the k = 3
+
+
+ knn.pred <- knn(train.norm.df1[,-7], valid.norm.df1[,-7], 
+                  cl = train.norm.df1[,7], k = 3)
+accuracy.df <- confusionMatrix(knn.pred, valid.norm.df1[,7])$overall[1]
+accuracy.df
+  
+```
+
+
+
+
+```{r}
+CrossTable(x=valid.norm.df1[,7],y=knn.pred)
+```
+
+
+```{r}
+# Test Data
+knn.pred <- knn(train.norm.df1[,-7], test.norm.df1[,-7], 
+                  cl = train.norm.df1[,7], k = 3)
+accuracy.df <- confusionMatrix(knn.pred, test.norm.df1[,7])$overall[1]
+accuracy.df
+```
+
+```{r}
+CrossTable(x=test.norm.df1[,7], y=knn.pred)
+```
+
