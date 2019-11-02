@@ -1,0 +1,257 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+ 
+Qs 1.	The dataset on American College and University Rankings contains information on 1302 American colleges and universities offering an undergraduate program. For each university, there are 17 measurements, including continuous measurements (such as tuition and graduation rate) and categorical measurements (such as location by state and whether it is a private or public school).
+
+```{r}
+library(tidyverse)  # data manipulation
+##install.packages("factoextra") # if necessary
+library(factoextra) # clustering algorithms & visualization
+library(ISLR)
+```
+
+```{r}
+udata <- read.csv("Universities.csv") 
+
+```
+
+Qs1 Remove all records with missing measurements from the dataset.
+```{r}
+udata1 <-na.omit(udata) ##remove all the missing values
+```
+
+
+
+```{r}
+udata2 <- udata1[,c(-1,-2, -3)] ##remove the categorical variable.
+summary(udata2) ##show summary of dataset
+```
+
+
+Qs 2.	For all the continuous measurements, run K-Means clustering. Make sure to normalize the measurements. How many clusters seem reasonable for describing these data? What was your optimal K?
+```{r}
+udata2 <-scale(udata2) ##scale the dataset
+distance <- get_dist(udata2)
+fviz_dist(distance)
+##The graph shows the distance between continuous variables
+
+```
+
+```{r}
+##. Lets  run the k-means algorithm to cluster the Universities. lets take initial value of k = 4.
+set.seed(123)
+k4 <- kmeans(udata2, centers = 4, nstart = 25)
+              # k = 4, number of restarts = 25
+```
+
+```{r}
+k4$centers# output the centers
+str(k4)
+```
+```{r}
+k4$size
+##size of cluster
+```
+```{r}
+fviz_cluster(k4, data = udata2) ###Visualize cluster plot
+```
+
+
+```{r}
+library(tidyverse)  # data manipulation
+library(factoextra) # clustering & visualization
+library(ISLR)
+set.seed(123)
+
+fviz_nbclust(udata2, kmeans, method = "wss")
+##3 is the ideal number of k.
+###Calculating our optimal K using Elbow chart
+##The charts shows that the point 3 in Silhouette provides the best value for k. 
+```
+
+```{r}
+fviz_nbclust(udata2, kmeans, method = "silhouette")
+##calculating optimal k using silhouette method
+```
+
+
+The charts shows that the point 3 in Silhouette provides the best value for k.
+elbow and Silhouette provides the best value for k. While WSS, Silhouette will continue to drop for larger values of k, we have to make the tradeoff between overfitting, i.e., a model fitting both noise and signal, to a model having bias. Here, the elbow point provides that compromise where WSS, while still decreasing beyond k = 3, decreases at a much smaller rate. In other words, adding more clusters beyond 3 brings less improvement to cluster homogeneity.
+
+
+
+```{r}
+
+library(flexclust)
+set.seed(123)
+#Creating the cluster index for 3 clusters
+set.seed(123)
+k3 = kcca(udata2, k=3, kccaFamily("kmedians"))
+k3
+```
+
+```{r}
+library(dplyr)
+library(stats)
+set.seed(123)
+k3 <- kmeans(udata2, centers = 3, nstart = 25)
+              # k = 3, number of restarts = 25
+k3$centers# output the centers
+str(k3)
+```
+
+```{r}
+library(flexclust)
+set.seed(123)
+#Creating the cluster index for 3 clusters
+set.seed(123)
+k3 = kcca(udata2, k=3, kccaFamily("kmedians"))
+k3
+```
+
+
+```{r}
+cluster <- predict(k3)
+```
+
+
+
+
+```{r}
+#Merging the clusters to the original data frame
+set.seed(123)
+cluster <- data.frame(cluster)
+udata1 <- cbind(udata1, cluster)
+head(udata1)
+
+
+```
+
+
+3.	Compare the summary statistics for each cluster and describe each cluster in this context (e.g., “Universities with high tuition, low acceptance rate...”).
+
+
+```{r}
+#Summary Statistics for Each Cluster
+
+set.seed(123)
+Cluster_Stat <- udata1 %>% 
+    group_by( cluster ) %>%
+    summarise( Univ_InState_Max_Fee=udata1[which.max(in.state.tuition),1],Univ_OutState_Max_Fee=udata1[which.max(out.of.state.tuition),1],low_accept_rate=udata1[which.min(X..appl..accepted),1],Acceptance_rate = sum(X..appl..accepted)/ sum(X..appli..rec.d), Avg_out_state_tuition=mean(out.of.state.tuition), Avg_int_state_tuition=mean(in.state.tuition), mean_PHD_fac=mean(X..fac..w.PHD), mean_stud_fac_ratio=mean(stud..fac..ratio), mean_grad_rate=mean(Graduation.rate), priv_count = sum(Public..1...Private..2. == 2), pub_count = sum(Public..1...Private..2. == 1))
+head(Cluster_Stat)
+```
+
+
+```{r}
+#Summary Statistics For States
+
+Stat_States<-udata1 %>% 
+             group_by(State) %>%        summarise(Univ_InState_Max_Fee=udata1[which.max(in.state.tuition),1],Univ_OutState_Max_Fee=udata1[which.max(out.of.state.tuition),1],low_accept_rate=udata[which.min(X..appl..accepted),1],Acceptance_rate = sum(X..appl..accepted)/ sum(X..appli..rec.d), Avg_out_state_tuition=mean(out.of.state.tuition), Avg_int_state_tuition=mean(in.state.tuition), mean_PHD_fac=mean(X..fac..w.PHD), mean_stud_fac_ratio=mean(stud..fac..ratio), mean_grad_rate=mean(Graduation.rate), priv_count = sum(Public..1...Private..2. == 2), pub_count = sum(Public..1...Private..2. == 1))
+head(Stat_States)
+```
+
+
+```{r}
+#Summary Statistics for Private Universities
+
+Stat_Private <- udata1 %>% 
+    filter(Public..1...Private..2. == 2) %>%
+    group_by( cluster) %>%
+    summarise( Univ_InState_Max_Fee=udata[which.max(in.state.tuition),1],Univ_OutState_Max_Fee=udata1[which.max(out.of.state.tuition),1],low_accept_rate=udata[which.min(X..appl..accepted),1],Acceptance_rate = sum(X..appl..accepted)/ sum(X..appli..rec.d), Avg_out_state_tuition=mean(out.of.state.tuition), Avg_int_state_tuition=mean(in.state.tuition), mean_PHD_fac=mean(X..fac..w.PHD), mean_stud_fac_ratio=mean(stud..fac..ratio), mean_grad_rate=mean(Graduation.rate))
+head(Stat_Private)
+```
+
+```{r}
+#Summary Statistics for Public Universities
+
+Stat_Public <- udata1 %>% 
+    filter(Public..1...Private..2. == 1) %>%
+    group_by( cluster ) %>%
+    summarise(Univ_InState_Max_Fee=udata[which.max(in.state.tuition),1],Univ_OutState_Max_Fee=udata1[which.max(out.of.state.tuition),1],low_accept_rate=udata[which.min(X..appl..accepted),1], Acceptance_rate = sum(X..appl..accepted)/ sum(X..appli..rec.d), Avg_out_state_tuition=mean(out.of.state.tuition), Avg_int_state_tuition=mean(in.state.tuition), mean_PHD_fac=mean(X..fac..w.PHD), mean_stud_fac_ratio=mean(stud..fac..ratio), mean_grad_rate=mean(Graduation.rate))
+head(Stat_Public)
+```
+
+Following observation we have made out of this dataset:
+
+1) From The Dataframe, we can infer that the cluster3 has greater data points compared to other clusters.
+2) cluster 1 has highest public universities as compared to other universities in clusters. 
+3) The cluster2 has greater private universities which also explain the rational behind high instate and out of state tuition fee. 
+4) The mean PHD faculty ratio is lowest for cluster 1.
+5)The mean room, board, and fees is lowest for cluster 1.
+6)The average in state tuition is lowest for cluster 3 and same for out of state tuition. 
+7) The acceptance rate is lowest for cluster 2.
+8)Some additional information that could help explain the data would be the state of the school, or the operating budget of the university, or the amount of academic endowments of the university.
+
+QS 4 	Use the categorical measurements that were not used in the analysis (State and Private/Public) to characterize the different clusters. Is there any relationship between the clusters and the categorical information? 
+
+```{r}
+clusters<- data.frame(cluster)
+udata4 <- cbind(udata1[,c(2,3)], clusters)
+udata4
+```
+
+```{r}
+library(ggplot2)
+ggplot(udata4, aes(x=udata4$State, y=udata4$Public..1...Private..2., color=udata4$cluster)) + geom_point()
+```
+
+This graph shows that cluster 1 has more public university and
+cluster 3 has more private university, cluster 2 is mixed of public university and private university.
+
+QS 5. What other external information can explain the contents of some or all of these clusters?
+
+
+1) From cluster_stat dataset, it is inferred that cluster 3 has more datapoint than cluster 1 and cluster2
+2) The graduation rate of cluster is highest.
+3) The mean PHD faculty ratio is lowest for cluster 1.
+4) cluster 1 has highest public universities as compared to other universities in clusters. 
+3) The cluster2 has greater private universities and high instate and out of state tuition fee. 
+4) The mean PHD faculty ratio is lowest for cluster 1.
+5)The mean room, board, and fees is lowest for cluster 1.
+6)The average in state tuition is lowest for cluster 3 and same for out of state tuition. 
+7) The acceptance rate is lowest for cluster 2.
+
+
+QS 6.	Consider Tufts University, which is missing some information. Compute the Euclidean distance of this record from each of the clusters that you found above (using only the measurements that you have). Which cluster is it closest to? Impute the missing values for Tufts by taking the average of the cluster on those measurements.
+
+
+
+```{r}
+#centers for clusters
+k3 <- kmeans(udata2, centers = 3, nstart = 25)
+##Isolating the data to Tufts University
+library(dplyr)
+library(stats)
+
+
+Tufts_University <- filter(udata, College.Name == "Tufts University")
+#Euclidean distance of this record from Cluster 1
+dist(rbind(Tufts_University[, -c(1, 2, 3, 10)], k3$centers[1,]))
+```
+
+```{r}
+##Euclidean distance of this record from Cluster 2
+dist(rbind(Tufts_University[, -c(1, 2, 3, 10)], k3$centers[2,]))
+```
+
+```{r}
+#Euclidean distance of this record from Cluster 3
+dist(rbind(Tufts_University[, -c(1, 2, 3, 10)], k3$centers[3,]))
+```
+
+The Eucledian Distance from Tufts to Cluster1 is smaller i.e.,29816.76 compared to cluster2 and cluster3. Hence, Cluster1 is Closest to Tufts.
+
+Impute the missing values for Tufts by taking the average of the cluster on those measurements.
+```{r}
+NROW(udata)
+library(dplyr)
+cluster1 <- filter(udata1, cluster == 1)
+cluster1_Avg <- mean(cluster1[,c(10)])
+Tufts_University[, c(10)] <- cluster1_Avg
+Tufts_University[, c(10)]
+
+```
+The Missing Value in tufts is 2260.721
+
