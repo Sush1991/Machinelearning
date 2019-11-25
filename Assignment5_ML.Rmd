@@ -1,0 +1,323 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+##install.packages("tidyverse")
+library(tidyverse)
+library(cluster)    # clustering algorithms
+##install.packages("factoextra")
+library(factoextra) # clustering visualization
+##install.packages("ggplot2")
+library(dendextend) # for comparing two dendrograms
+##install.packages("sparcl")
+library(sparcl)     #to create colourDendograms
+```
+
+
+```{r}
+Csdata<- read.csv("Cereals.csv") 
+```
+
+```{r}
+Csdata1<- na.omit(Csdata) ##remove the missing value      
+```
+
+```{r}
+Csdata2<-Csdata1[,c(-2,-3)] ## excluding catagorical variable
+head(Csdata2)
+```
+
+```{r}
+str(Csdata2)
+summary(Csdata2)
+```
+
+```{r}
+rownames(Csdata2) <- Csdata2$name ##Convert the names of the breakfast cereals to the row names, as this will later help us in visualising the clusters 
+```
+
+
+```{r}
+Csdata2 <- Csdata2[,c(-1)] ##Drop the name column as it is now just redundant information
+```
+
+
+```{r}
+
+##The data must be scaled, before measuring any type of distance metric as the variables with higher ranges will significantly influence the distance
+Csdata2 <- scale(Csdata2)
+head(Csdata2) 
+```
+
+
+Qs1 Apply hierarchical clustering to the data using Euclidean distance to the normalized measurements. Use Agnes to compare the clustering from  single linkage, complete linkage, average linkage and Ward. Choose the best method.
+
+```{r}
+# Dissimilarity matrix
+d <- dist(Csdata2, method = "euclidean")
+
+# Hierarchical clustering using Complete Linkage
+hc_complete <- hclust(d, method = "complete" )
+
+# Plot the obtained dendrogram
+plot(hc_complete, cex = 0.6, hang = -1)
+
+```
+
+Using Agnes to compare the clustering from  single linkage, complete linkage, average linkage, and Ward and comparing agglomerative coefficients of each method.
+
+```{r}
+hc_single <- agnes(Csdata2, method = "single")
+pltree(hc_single, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+
+```
+
+```{r}
+hc_average <- agnes(Csdata2, method = "average")
+pltree(hc_average, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+```
+
+```{r}
+# Compute with agnes
+hc_complete <- agnes(Csdata2, method = "complete")
+
+# Agglomerative coefficient
+hc_complete$ac
+
+```
+
+
+```{r}
+##We will find the agnes coefficient of all the methods.
+
+library(tidyverse)
+# methods to assess
+
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(Csdata2, method = x)$ac
+}
+
+map_dbl(m, ac)
+```
+
+The best linkage method is ward with agglomerative coefficient of 0.9046042.
+
+```{r}
+hc_ward <- agnes(Csdata2, method = "ward")
+pltree(hc_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") ##visualizing the dendrogram using wards method:
+```
+
+Qs 2) How many clusters would you choose?
+
+Referring the dendrogram, a suitable height shall be chosen where a horizontal line shall be plotted and the number of instances where the horizontal line cut the branches of dendrogram are clusters of our data. So, our hierarchical clustering analysis is producing 6 clusters.
+```{r}
+
+#Create the distance matrix
+d <- dist(Csdata2, method = "euclidean")
+
+# Ward's method for Hierarchical clustering
+hc_ward_cut <- hclust(d, method = "ward.D2" )
+
+plot(hc_ward_cut, cex=0.6 )
+rect.hclust(hc_ward_cut,k=6,border = 1:6) 
+
+```
+
+```{r}
+##Lets see how many number of records of the data grouped and assigned  to clusters
+# Cut tree into 6 groups
+sub_grp <- cutree(hc_ward_cut, k = 6)
+
+# Number of members in each cluster
+table(sub_grp)
+```
+
+```{r}
+cluster <- cutree(hc_ward,k=6)
+cluster
+```
+
+
+QS3) Comment on the structure of the clusters and on their stability. Hint: To check stability,  partition the data and see how well clusters formed based on one part apply to the other part. To do this:
+Cluster partition A
+Use the cluster centroids from A to assign each record in partition B (each record is assigned to the cluster with the closest centroid).
+Assess how consistent the cluster assignments are compared to the assignments based on all the data.
+
+```{r}
+
+library(knitr)
+library(dendextend)
+library(ggplot2)
+##install.packages("hrbrthemes")
+library(hrbrthemes)
+##install.packages("viridisLite")
+library(viridis)
+ce <-data.frame(cbind(Csdata2,cluster))  ## combining cluster lable with subset of the data to view all information in one table  
+
+
+ 
+
+csdata3 <- na.omit(Csdata) ##creating new subset of data and deleting rows with "NA" value
+
+train.data <- csdata3[1:60,]  ## creating partition of subset  by taking first 60 row  
+test.data <- csdata3[61:74,]  ## creating partition of subset  by taking next 14 row of"newdata"
+
+train <- scale(train.data[,-c(1:3)]) ## Standardizing data for all numeric data for subset
+test <- scale(test.data[,-c(1:3)]) ## Standardizing data for all numeric data for subset
+
+# Computing  agnes with different linkage method to identify highest coefficients
+
+
+
+train_ward<- agnes(train,method = "ward")   
+train_avg<-agnes(train,method="average")
+train_com<-agnes(train,method="complete")
+train_sin<-agnes(train,method="single")
+kable(cbind(ward=train_ward$ac,average=train_avg$ac,complete=train_com$ac,single=train_sin$ac)) ## this function provide information for Agglomerative coefficients for all linkage in a tabular format and easily view
+
+```
+
+```{r}
+
+
+fviz_dend(train_ward,k=6,cex=0.9,k_colors = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"),rect_border = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"), rect_fill = TRUE  ,color_labels_by_k = TRUE,rect= TRUE,main="Dendrogram of agnes")
+
+
+```
+
+##dendrogram shows 6 distinct cluster
+
+
+```{r}
+
+
+clust.train <- cutree(hc_ward_cut,k=6) # getting lable for data points
+
+b1 <-data.frame(cbind(train,clust.train))  ## combining cluster lable with subset of the data to view all information in one table
+
+
+
+n1<-data.frame(column=seq(1,13,1),mean=rep(0,13))## to find centroid of variable for cluster lable with k=1
+n2<-data.frame(column=seq(1,13,1),mean=rep(0,13))## to find centroid of variable for cluster lable with k=2
+n3<-data.frame(column=seq(1,13,1),mean=rep(0,13))## to find centroid of variable for cluster lable with k=3
+n4<-data.frame(column=seq(1,13,1),mean=rep(0,13))## to find centroid of variable for cluster lable with k=4
+n5<-data.frame(column=seq(1,13,1),mean=rep(0,13))## to find centroid of variable for cluster lable with k=5
+n6<-data.frame(column=seq(1,13,1),mean=rep(0,13))## to find centroid of variable for cluster lable with k=6
+for(i in 1:13) ## formation of " for loop" to find centroid for all column in subsent of the data
+{
+  n1[i,2]<-mean(b1[b1$clust==1,i])
+  n2[i,2]<-mean(b1[b1$clust==2,i])
+  n3[i,2]<-mean(b1[b1$clust==3,i])
+  n4[i,2]<-mean(b1[b1$clust==4,i])
+  n5[i,2]<-mean(b1[b1$clust==5,i])
+  n6[i,2]<-mean(b1[b1$clust==6,i])
+}
+centroid.train<-t(cbind(n1$mean,n2$mean,n3$mean,n4$mean,n5$mean,n6$mean)) ## combining mean of each column and then transpose data from column to row for better view
+colnames(centroid.train)<-colnames(Csdata1[,-c(1:3)])  ## assign column name to matrix from orignal data
+
+centroid.train 
+```
+
+
+```{r}
+c1<-data.frame(data=seq(1,14,1),cluster=rep(0,14))  ##creating a function for a "for loop" to find minimum distance form cluster centroid to each observation in test data in order to see which cluster will these observation fall in 
+
+for(i in 1:14)   ## " for loop for 14 observation in test data
+{
+  x1<-as.data.frame(rbind(centroid.train,test[i,]))
+  z1<-as.matrix(get_dist(x1))
+  c1[i,2]<-which.min(z1[5,-5])
+}
+
+c1 ## tabluar form with observation no. and cluster no.
+```
+```{r}
+kable(cbind(data_labels=ce[61:74,14],partition_labels=c1$cluster))  ## checking cluster label for 14 observation form test.data against orignal cluster lables formed in " STEP 1"
+```
+
+```{r}
+### on further investigation we see the stability of cluster is 92% ie. out of 14 observation it has predicted 13 observation as correct
+```
+
+
+QS 4) The elementary public schools would like to choose a set of cereals to include in their daily cafeterias. Every day a different cereal is offered, but all cereals should support a healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.” Should the data be normalized? If not, how should they be used in the cluster analysis?
+
+```{r}
+
+ce <-data.frame(cbind(Csdata2,cluster))  ## combining cluster lable with subset of the data to view all information in one table
+
+m1<-data.frame(column=seq(1,13,1),mean=rep(0,13)) ## to find centroid of variable for cluster lable with k=1
+m2<-data.frame(column=seq(1,13,1),mean=rep(0,13)) ## to find centroid of variable for cluster lable with k=2
+m3<-data.frame(column=seq(1,13,1),mean=rep(0,13)) ## to find centroid of variable for cluster lable with k=3
+m4<-data.frame(column=seq(1,13,1),mean=rep(0,13)) ## to find centroid of variable for cluster lable with k=4
+m5<-data.frame(column=seq(1,13,1),mean=rep(0,13)) ## to find centroid of variable for cluster lable with k=5
+m6<-data.frame(column=seq(1,13,1),mean=rep(0,13)) ## to find centroid of variable for cluster lable with k=6
+for(i in 1:13)  ## formation of for loop" to find centroid for all column in subsent of the data
+{
+  m1[i,2]<-mean(ce[ce$cluster==1,i])
+  m2[i,2]<-mean(ce[ce$cluster==2,i])
+  m3[i,2]<-mean(ce[ce$cluster==3,i])
+  m4[i,2]<-mean(ce[ce$cluster==4,i])
+  m5[i,2]<-mean(ce[ce$cluster==5,i])
+  m6[i,2]<-mean(ce[ce$cluster==6,i])
+}
+centroid<-t(cbind(m1$mean,m2$mean,m3$mean,m4$mean,m5$mean,m6$mean)) ## combining mean of each column and then transpose data from column to row for better view
+colnames(centroid)<-colnames(Csdata1[,-c(1:3)]) ## assign column name to matrix from orignal data
+
+centroid ## view information
+
+```
+
+
+```{r}
+library(ggplot2)
+library(GGally)
+
+#  ploting mean of each variable in cluster on chart to identify  bestpossible combination
+ggparcoord(cbind(c(1:6),centroid),columns = 2:14,groupColumn = 1,showPoints = TRUE,title = " Charter of cluster",alphaLines = 0.9) 
+```
+
+
+```{r}
+table(cluster)
+```
+
+
+```{r}
+res1<-cbind(csdata3,cluster)
+res1[res1$cluster==1,]
+```
+
+```{r}
+res1[res1$cluster==2,]
+```
+
+```{r}
+res1[res1$cluster==3,]
+
+```
+
+
+```{r}
+res1[res1$cluster==4,]
+```
+```{r}
+res1[res1$cluster==5,]
+```
+
+```{r}
+res1[res1$cluster==6,]
+```
+
+
+```{r}
+1) Healthy cereals with much dietary fibers, less calories and less fats : 100% Bran, All-Bran with extra fibers, and All-Bran.
+2) Cereals for hungry people in need of energy are Muesli Cereals
+
+The clusters contain nutritionally rich, adequate and poor levels. We grouped all the records in the 6 clusters
