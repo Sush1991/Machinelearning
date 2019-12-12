@@ -1,0 +1,290 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse) 
+library(factoextra)
+library(ISLR)
+library(dplyr)     # for data wrangling
+library(ggplot2)# for plotting
+
+```
+
+```{r}
+Mdata <- read.csv("BathSoap.csv")
+Mdata1 <-scale(Mdata[,-c(1:11)]) ##scale the dataset
+head(Mdata1)
+
+```
+
+
+QS 1 Use k-means clustering to identify clusters of households based on:
+a. The variables that describe purchase behavior (including brand loyalty)
+```{r}
+
+Mdata2<-(Mdata1[,c(1:8,20,36)]) 
+##Max brand loyalty is obtained by taking maximum values out of the variables - Br. Cd. 57,144, Br. Cd. 55, Br. Cd. 272Cd.286, Br. Cd.24, Br. Cd.481, Br. Cd.352, Br. Cd.5 
+##Others999 gives the share of transactions towards other brands which indicates that a customer is not brand loyal
+
+head(Mdata2)
+
+```
+
+
+```{r}
+summary(Mdata2)
+```
+
+```{r}
+fviz_nbclust(Mdata2, kmeans, method = "wss")##Calculating our optimal K using Elbow chart
+```
+
+
+
+```{r}
+set.seed(120)##Lets run the k-means algorithm to cluster the dataset.
+k3 <- kmeans(Mdata2, centers = 3, nstart = 25)
+k3center <- as.data.frame(k3$centers)
+k3$size
+```
+
+
+```{r}
+# Add a column for cluster number / to be also used for color
+cluster <- matrix(c("1","2","3"),nrow = 3)
+k3center <- cbind(cluster,k3center)
+k3center
+
+```
+
+
+```{r}
+library(hrbrthemes)
+library(GGally)
+library(viridis)
+```
+
+
+```{r}
+##visualize the data
+ggparcoord(k3center,
+    columns = 2:11, groupColumn = 1, 
+    showPoints = TRUE, 
+    title = "Parallel Coordinate Plot for Purchase behavior Data - K = 3",
+    alphaLines = 0.3 
+    ) 
+```
+
+Cluster 1: This group has the lowest brand loyalty because they mostly buy from other999 brands and also has the lowest number of brands and they have  highest average price of total transaction. it is least interest because it has lowest value
+
+Cluster 2: This group purchase a large number of brands with highest brand runs. They have highest number and least volume of transactions whereas their brand loyalty is between cluster 1 and cluster 3 customers. 
+
+Cluster 3: This group has maximum brand loyality and also has the lowest number of brands and least average price of total transaction. 
+
+
+QS b The variables that describe the basis for purchase.
+```{r}
+Mdata3 <- Mdata1[,c(9:11,21:35)]
+head(Mdata3)
+```
+
+```{r}
+fviz_nbclust(Mdata3, kmeans, method = "wss")
+```
+
+
+
+```{r}
+set.seed(120)
+k3a <- kmeans(Mdata3, centers = 3, nstart = 25)
+```
+
+
+```{r}
+k3acenter <- as.data.frame(k3a$centers)
+
+```
+
+```{r}
+# Add a column for cluster number / to be also used for color
+acluster <- matrix(c("1","2","3"),nrow = 3)
+k3acenter <- cbind(acluster,k3acenter)
+k3acenter
+```
+```{r}
+ggparcoord(k3acenter,
+    columns = 2:19, groupColumn = 1, 
+    showPoints = TRUE, 
+    title = "Parallel Coordinate Plot for Basis of purchase - K = 3",
+    alphaLines = 0.3 
+    ) 
+```
+
+Cluster1 customer in this cluster are responsive to pricing category 2,4 and 5
+
+Cluster 2 customer in this cluster are highly responsive to promotion and pricing category 1
+
+Cluster3 they buy products irespective of promotion, they are highely responsive to selling proposition and pricing category 3.
+
+QS c The variables that describe both purchase behavior and basis of purchase
+```{r}
+Mdata4 <-Mdata1[,c(1:11,20:36)]
+head(Mdata4)
+```
+
+```{r}
+fviz_nbclust(Mdata4, kmeans, method = "wss")
+```
+
+
+```{r}
+set.seed(120)
+k3b <- kmeans(Mdata4, centers = 3, nstart = 25)
+k3bcenter <- as.data.frame(k3b$centers)
+
+```
+
+
+```{r}
+
+# Add a column for cluster number / to be also used for color
+bcluster <- matrix(c("1","2","3"),nrow = 3)
+k3bcenter <- cbind(bcluster,k3bcenter)
+k3bcenter
+```
+
+
+```{r}
+ggparcoord(k3bcenter,
+    columns = 2:28, groupColumn = 1, 
+    showPoints = TRUE, 
+    title = "Parallel Coordinate Plot for market Data - K = 3",
+    alphaLines = 0.3 
+    ) 
+```
+Cluster1 Customers in this cluster have very low brand loyalty and they buy products from other brands  very often. customer are highly responsive towards pricing category 2.
+
+Cluster2 Customers in this cluster have low brand loyalty and buy products from other brands very often.
+
+Cluster3 Customers in this cluster are highly brand loyal and very much responsive to promotion. and the volume of transaction is also highest.
+the customes in this cluster are very responsive to price category 3.
+
+
+```{r}
+k3b$size 
+```
+
+
+We can add demographic information:
+
+```{r}
+Mdata5<-Mdata[,c(2:11)]
+head(Mdata5)
+```
+```{r}
+fviz_nbclust(Mdata5, kmeans, method = "wss")
+```
+
+```{r}
+set.seed(120)
+k3c <- kmeans(Mdata5, centers = 3, nstart = 25)
+k3ccenter <- as.data.frame(k3c$centers)
+
+```
+```{r}
+# Add a column for cluster number / to be also used for color
+ccluster <- matrix(c("1","2","3"),nrow = 3)
+k3ccenter <- cbind(ccluster,k3ccenter)
+k3ccenter
+```
+
+```{r}
+ggparcoord(k3ccenter,
+    columns = 2:11, groupColumn = 1, 
+    showPoints = TRUE, 
+    title = "Parallel Coordinate Plot for Demographic Data - K = 3",
+    alphaLines = 0.3 
+    ) 
+```
+Cluster1 customer are high socio economic class and maximum household member.
+
+Cluster2 customer have average socio economic class and low affluence index. customer have minimum household member, and they are least educated.
+
+Cluster3 customer are having high affluence index and they are educated class.
+
+
+2. Select what you think is the best segmentation and comment on the characteristics (demographic,
+brand loyalty, and basis for purchase) of these clusters. (This information would be used to guide the
+development of advertising and promotional campaigns.)
+
+Cluster 1  is distinguished mostly by the purchase behavior variables - it has lowest brand loyalty together with low value, volume and frequency.  The customers having lowest number of brand as well - this group is not particularly responsive to promotions, pricing or selling propositions.
+Demographically it has high socio economic class, and maximum household member.
+
+Cluster 2  stands out in both groups of variables - it has average loyalty, highest number of brand runs,low value and price per purchase, and very differential response to price (highly responsive to categories 2,4 and 5, unresponsive to category 3), and selling proposition   Demographically it has low affluence index and education and it has relatively small family size. 
+
+
+Cluster 3 is characterized by highest brand loyalty,with highest volume of transaction.low volume and sensitivity to promotions and price (responsive to pricing cat. 3), and highly responsive to selling proposition.  Demographically, it has high affluence index, and highest educated class of high socio-economic status.
+
+The three clusters are well separated in almost all variables.  
+Cluster 3 has more loyal customer with lower socioeconomic status. 
+Volume of transaction is also more in this cluster, 
+the customers are very much responsive to promotion and price category 3.
+ 
+So our success category is cluster 3, the more affluent group, lower socioeconomic group, which also turns out to be highly loyal.
+we can target these customer by running promotions and offers.
+
+
+3. Develop a model that classifies the data into these segments. Since this information would most likely
+be used in targeting direct-mail promotions, it would be useful to select a market segment that would be
+defined as a success in the classification model.
+
+```{r}
+Mdata8<-Mdata[,c(23:31)] ##to build a model based on brand loyalty
+```
+
+
+```{r}
+Kbrand <- kmeans(Mdata8,centers = 2,nstart = 25)
+Kbrand
+
+
+set.seed(120)
+Kbrand1<-as.data.frame(Kbrand$centers)
+```
+
+
+```{r}
+dcluster <- matrix(c("1","2"),nrow = 2)
+Kbrand2 <- cbind(dcluster,Kbrand1)
+Kbrand2
+
+```
+
+```{r}
+ggparcoord(Kbrand2,
+    columns = 2:10, groupColumn = 1, 
+    showPoints = TRUE, 
+    title = "Parallel Coordinate Plot for Brand loyalty - K = 3",
+    alphaLines = 0.3 
+    ) 
+```
+
+```{r}
+Mdata6 <- cbind(Mdata[,2:11],Mdata1[,-(12:19)])
+```
+
+
+```{r}
+Mdata9 <- cbind(Mdata6, clusterNum = Kbrand$cluster)
+
+Mdata9$clusterNum <- as.factor(Mdata9$clusterNum)
+head(Mdata9)
+
+
+
+```
+`
+
+The customer who are in cluster 1 are brand loyal customer and customers in cluster 2 are non brand loyal, they freqently do shopping from other999 brands.
